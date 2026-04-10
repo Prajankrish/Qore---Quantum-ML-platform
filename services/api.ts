@@ -36,12 +36,43 @@ const STORAGE_KEYS = {
     NOTIFICATIONS: 'qore_notifications',
     BROADCASTS: 'qore_broadcasts',
     INVOICES: 'qore_invoices',
-    SAVED_PAPERS: 'qore_saved_papers'
+    SAVED_PAPERS: 'qore_saved_papers',
+    LEARNING_PROGRESS: 'qore_learning_progress',
+    USER_STATS: 'qore_user_stats'
 };
 
 // Runtime Cache for performance
 const SEARCH_CACHE: Record<string, ResearchPaper[]> = {};
 
+// Get current user ID for user-specific storage
+const getCurrentUserId = (): string => {
+    try {
+        const session = localStorage.getItem('qore_session');
+        if (session) {
+            const user = JSON.parse(session);
+            return user?.id || 'anonymous';
+        }
+    } catch {}
+    return 'anonymous';
+};
+
+// User-specific storage helpers
+const getUserStorage = <T>(key: string, defaultVal: T): T => {
+    try {
+        const userId = getCurrentUserId();
+        const userKey = `${key}_${userId}`;
+        const item = localStorage.getItem(userKey);
+        return item ? JSON.parse(item) : defaultVal;
+    } catch { return defaultVal; }
+};
+
+const setUserStorage = (key: string, val: any) => {
+    const userId = getCurrentUserId();
+    const userKey = `${key}_${userId}`;
+    localStorage.setItem(userKey, JSON.stringify(val));
+};
+
+// Global storage (for shared data like broadcasts)
 const getStorage = <T>(key: string, defaultVal: T): T => {
     try {
         const item = localStorage.getItem(key);
@@ -219,18 +250,39 @@ export const api = {
       }
   },
 
+  // --- LEARNING PROGRESS ---
+  learningProgress: {
+      getCompletedModules: (): string[] => getUserStorage(STORAGE_KEYS.LEARNING_PROGRESS, []),
+      saveCompletedModules: (modules: string[]) => setUserStorage(STORAGE_KEYS.LEARNING_PROGRESS, modules),
+      markModuleComplete: (moduleId: string) => {
+          const completed = getUserStorage<string[]>(STORAGE_KEYS.LEARNING_PROGRESS, []);
+          if (!completed.includes(moduleId)) {
+              setUserStorage(STORAGE_KEYS.LEARNING_PROGRESS, [...completed, moduleId]);
+          }
+      },
+      resetProgress: () => setUserStorage(STORAGE_KEYS.LEARNING_PROGRESS, []),
+      getStats: (): { completedCount: number; lastActivity?: string } => {
+          const stats = getUserStorage<{ completedCount: number; lastActivity?: string }>(STORAGE_KEYS.USER_STATS, { completedCount: 0 });
+          return stats;
+      },
+      updateStats: (updates: Partial<{ completedCount: number; lastActivity: string }>) => {
+          const current = getUserStorage<{ completedCount: number; lastActivity?: string }>(STORAGE_KEYS.USER_STATS, { completedCount: 0 });
+          setUserStorage(STORAGE_KEYS.USER_STATS, { ...current, ...updates });
+      }
+  },
+
   // --- PAPER PERSISTENCE ---
   paperService: {
-      getSavedPapers: (): ResearchPaper[] => getStorage(STORAGE_KEYS.SAVED_PAPERS, []),
+      getSavedPapers: (): ResearchPaper[] => getUserStorage(STORAGE_KEYS.SAVED_PAPERS, []),
       savePaper: (paper: ResearchPaper) => {
-          const list = getStorage<ResearchPaper[]>(STORAGE_KEYS.SAVED_PAPERS, []);
+          const list = getUserStorage<ResearchPaper[]>(STORAGE_KEYS.SAVED_PAPERS, []);
           if (!list.find(p => p.id === paper.id)) {
-              setStorage(STORAGE_KEYS.SAVED_PAPERS, [paper, ...list]);
+              setUserStorage(STORAGE_KEYS.SAVED_PAPERS, [paper, ...list]);
           }
       },
       unsavePaper: (id: string) => {
-          const list = getStorage<ResearchPaper[]>(STORAGE_KEYS.SAVED_PAPERS, []);
-          setStorage(STORAGE_KEYS.SAVED_PAPERS, list.filter(p => p.id !== id));
+          const list = getUserStorage<ResearchPaper[]>(STORAGE_KEYS.SAVED_PAPERS, []);
+          setUserStorage(STORAGE_KEYS.SAVED_PAPERS, list.filter(p => p.id !== id));
       }
   },
 
@@ -565,7 +617,7 @@ export const api = {
 
   // --- REST OF API ---
   paymentService: {
-      getInvoices: (): Invoice[] => getStorage(STORAGE_KEYS.INVOICES, []),
+      getInvoices: (): Invoice[] => getUserStorage(STORAGE_KEYS.INVOICES, []),
       downloadInvoicePDF: (id: string) => {
           const blob = new Blob([`INVOICE #${id}\n\nThank you for using Qore Platform.`], { type: "text/plain;charset=utf-8" });
           saveAs(blob, `invoice_${id}.txt`);
@@ -583,20 +635,20 @@ export const api = {
               plan: plan,
               userId: 'current'
           };
-          const list = getStorage(STORAGE_KEYS.INVOICES, []);
-          setStorage(STORAGE_KEYS.INVOICES, [inv, ...list]);
+          const list = getUserStorage(STORAGE_KEYS.INVOICES, []);
+          setUserStorage(STORAGE_KEYS.INVOICES, [inv, ...list]);
           return inv;
       }
   },
 
-  getExperiments: (): Experiment[] => getStorage(STORAGE_KEYS.EXPERIMENTS, []),
+  getExperiments: (): Experiment[] => getUserStorage(STORAGE_KEYS.EXPERIMENTS, []),
   saveExperiment: (exp: Experiment) => {
-      const list = getStorage(STORAGE_KEYS.EXPERIMENTS, []);
-      setStorage(STORAGE_KEYS.EXPERIMENTS, [exp, ...list]);
+      const list = getUserStorage(STORAGE_KEYS.EXPERIMENTS, []);
+      setUserStorage(STORAGE_KEYS.EXPERIMENTS, [exp, ...list]);
   },
   deleteExperiment: (id: string) => {
-      const list: Experiment[] = getStorage(STORAGE_KEYS.EXPERIMENTS, []);
-      setStorage(STORAGE_KEYS.EXPERIMENTS, list.filter(e => e.id !== id));
+      const list: Experiment[] = getUserStorage(STORAGE_KEYS.EXPERIMENTS, []);
+      setUserStorage(STORAGE_KEYS.EXPERIMENTS, list.filter(e => e.id !== id));
   },
   async downloadArtifacts(experiment: Experiment): Promise<void> {
     const zip = new JSZip();
@@ -605,14 +657,14 @@ export const api = {
     saveAs(content, `exp_${experiment.id}.zip`);
   },
 
-  getModels: (): ModelArtifact[] => getStorage(STORAGE_KEYS.MODELS, []),
+  getModels: (): ModelArtifact[] => getUserStorage(STORAGE_KEYS.MODELS, []),
   saveModel: (model: ModelArtifact) => {
-      const list = getStorage(STORAGE_KEYS.MODELS, []);
-      setStorage(STORAGE_KEYS.MODELS, [model, ...list]);
+      const list = getUserStorage(STORAGE_KEYS.MODELS, []);
+      setUserStorage(STORAGE_KEYS.MODELS, [model, ...list]);
   },
   deleteModel: (id: string) => {
-      const list: ModelArtifact[] = getStorage(STORAGE_KEYS.MODELS, []);
-      setStorage(STORAGE_KEYS.MODELS, list.filter(m => m.id !== id));
+      const list: ModelArtifact[] = getUserStorage(STORAGE_KEYS.MODELS, []);
+      setUserStorage(STORAGE_KEYS.MODELS, list.filter(m => m.id !== id));
   },
   async downloadModel(model: ModelArtifact): Promise<void> {
     const zip = new JSZip();
@@ -652,8 +704,8 @@ export const api = {
           ]
       };
       const updatedModel = { ...model, resourceMetrics: metrics };
-      const models = getStorage<ModelArtifact[]>(STORAGE_KEYS.MODELS, []);
-      setStorage(STORAGE_KEYS.MODELS, models.map(m => m.id === model.id ? updatedModel : m));
+      const models = getUserStorage<ModelArtifact[]>(STORAGE_KEYS.MODELS, []);
+      setUserStorage(STORAGE_KEYS.MODELS, models.map(m => m.id === model.id ? updatedModel : m));
       return updatedModel;
   },
   async generateModelDocs(model: ModelArtifact): Promise<ModelArtifact> {
@@ -669,8 +721,8 @@ export const api = {
               if (response.text) {
                   const docs = JSON.parse(response.text);
                   const updatedModel = { ...model, aiDocs: docs };
-                  const models = getStorage<ModelArtifact[]>(STORAGE_KEYS.MODELS, []);
-                  setStorage(STORAGE_KEYS.MODELS, models.map(m => m.id === model.id ? updatedModel : m));
+                  const models = getUserStorage<ModelArtifact[]>(STORAGE_KEYS.MODELS, []);
+                  setUserStorage(STORAGE_KEYS.MODELS, models.map(m => m.id === model.id ? updatedModel : m));
                   return updatedModel;
               }
           } catch (e) { console.error("Docs gen failed", e); }
@@ -710,9 +762,9 @@ export const api = {
       await new Promise(r => setTimeout(r, 500));
       return { amplitudes: [{ state: '00', magnitude: 0.707 }, { state: '11', magnitude: 0.707 }], qubits: features.map((f, i) => ({ id: i, theta: f % 3.14, phi: 0 })) };
   },
-  getCustomDatasets: (): CustomDataset[] => getStorage(STORAGE_KEYS.DATASETS, []),
+  getCustomDatasets: (): CustomDataset[] => getUserStorage(STORAGE_KEYS.DATASETS, []),
   saveCustomDataset: (name: string, content: string) => {
-      const list = getStorage(STORAGE_KEYS.DATASETS, []);
+      const list = getUserStorage(STORAGE_KEYS.DATASETS, []);
       const lines = content.split('\n').filter(line => line.trim() !== '');
       const headers = lines[0].split(',').map(h => h.trim());
       
@@ -763,11 +815,11 @@ export const api = {
           preview: previewRows,
           stats: stats
       };
-      setStorage(STORAGE_KEYS.DATASETS, [newDS, ...list]);
+      setUserStorage(STORAGE_KEYS.DATASETS, [newDS, ...list]);
   },
   deleteCustomDataset: (id: string) => {
-      const list: CustomDataset[] = getStorage(STORAGE_KEYS.DATASETS, []);
-      setStorage(STORAGE_KEYS.DATASETS, list.filter(d => d.id !== id));
+      const list: CustomDataset[] = getUserStorage(STORAGE_KEYS.DATASETS, []);
+      setUserStorage(STORAGE_KEYS.DATASETS, list.filter(d => d.id !== id));
   },
   getDatasetPreview: async (name: string): Promise<DatasetPreview> => {
       await new Promise(r => setTimeout(r, 500));

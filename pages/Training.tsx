@@ -262,38 +262,139 @@ export const Training: React.FC<TrainingProps> = ({ onNavigate }) => {
           </div>
         } 
       />
+
+      {/* Educational Introduction */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* What is VQC */}
+          <Card className="lg:col-span-2 border-l-4 border-l-indigo-500">
+              <div className="flex items-center gap-3 mb-4">
+                  <Brain className="w-6 h-6 text-indigo-600"/>
+                  <div>
+                      <h3 className="font-bold text-slate-900 dark:text-white">Variational Quantum Classifier</h3>
+                      <p className="text-xs text-slate-600 dark:text-slate-400">Hybrid quantum-classical learning</p>
+                  </div>
+              </div>
+              <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed mb-4">
+                  A VQC is a hybrid algorithm that combines quantum and classical computing. A quantum circuit (with tunable parameters) encodes data and makes predictions. A classical optimizer (SPSA) adjusts these parameters to minimize loss. This approach runs on today's noisy quantum devices without requiring full quantum state preparation.
+              </p>
+              <div className="space-y-2 mb-4">
+                  <div className="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300">
+                      <ArrowRight className="w-4 h-4 text-indigo-600 mt-0.5 flex-shrink-0"/>
+                      <span><span className="font-bold">Quantum Part:</span> Parameterized circuit encodes features and creates quantum advantage</span>
+                  </div>
+                  <div className="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300">
+                      <ArrowRight className="w-4 h-4 text-indigo-600 mt-0.5 flex-shrink-0"/>
+                      <span><span className="font-bold">Classical Part:</span> Optimizer updates circuit parameters to reduce prediction error</span>
+                  </div>
+              </div>
+              <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-200 dark:border-indigo-800">
+                  <p className="text-xs text-indigo-800 dark:text-indigo-200 font-medium">
+                      <span className="font-bold">💡 Why This Matters:</span> VQCs can learn non-linear patterns that classical algorithms struggle with, using exponentially fewer parameters.
+                  </p>
+              </div>
+          </Card>
+
+          {/* Training Process */}
+          <Card className="border-l-4 border-l-violet-500">
+              <div className="flex items-center gap-3 mb-4">
+                  <TrendingUp className="w-6 h-6 text-violet-600"/>
+                  <h3 className="font-bold text-slate-900 dark:text-white">Training Process</h3>
+              </div>
+              <ol className="space-y-3 text-sm">
+                  <li className="flex gap-2">
+                      <span className="inline-flex items-center justify-center w-5 h-5 bg-violet-600 text-white text-xs font-bold rounded-full flex-shrink-0">1</span>
+                      <span className="text-slate-700 dark:text-slate-300"><span className="font-bold">Initialize</span> random circuit parameters</span>
+                  </li>
+                  <li className="flex gap-2">
+                      <span className="inline-flex items-center justify-center w-5 h-5 bg-violet-600 text-white text-xs font-bold rounded-full flex-shrink-0">2</span>
+                      <span className="text-slate-700 dark:text-slate-300"><span className="font-bold">Forward pass</span> runs circuit on data</span>
+                  </li>
+                  <li className="flex gap-2">
+                      <span className="inline-flex items-center justify-center w-5 h-5 bg-violet-600 text-white text-xs font-bold rounded-full flex-shrink-0">3</span>
+                      <span className="text-slate-700 dark:text-slate-300"><span className="font-bold">Compute loss</span> comparing prediction to truth</span>
+                  </li>
+                  <li className="flex gap-2">
+                      <span className="inline-flex items-center justify-center w-5 h-5 bg-violet-600 text-white text-xs font-bold rounded-full flex-shrink-0">4</span>
+                      <span className="text-slate-700 dark:text-slate-300"><span className="font-bold">Update params</span> using SPSA optimizer</span>
+                  </li>
+                  <li className="flex gap-2">
+                      <span className="inline-flex items-center justify-center w-5 h-5 bg-violet-600 text-white text-xs font-bold rounded-full flex-shrink-0">5</span>
+                      <span className="text-slate-700 dark:text-slate-300"><span className="font-bold">Repeat</span> for N epochs until convergence</span>
+                  </li>
+              </ol>
+          </Card>
+      </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-4 space-y-6">
           <Card title="Hyperparameters" subtitle="Configure training loop" action={<Settings className="w-5 h-5 text-slate-400"/>}>
             <div className="space-y-5">
-              <Select label="Target Dataset" value={config.dataset} onChange={e => setConfig({...config, dataset: e.target.value as DatasetName})}>{Object.values(DatasetName).map(d => <option key={d} value={d}>{d}</option>)}</Select>
+              <Select label="Target Dataset" value={config.dataset} onChange={e => setConfig({...config, dataset: e.target.value as DatasetName})} helpText="Choose data to train on">{Object.values(DatasetName).map(d => <option key={d} value={d}>{d}</option>)}</Select>
               
               <Select 
                 label="Quantum Backend" 
                 value={config.backend} 
                 onChange={e => setConfig({...config, backend: e.target.value})}
-                helpText="Select execution environment"
+                helpText="Simulator = fast + deterministic. IBM Quantum = real hardware + noise"
               >
-                  <option value="Simulator">QasmSimulator (Local)</option>
-                  <option value="IBM Quantum">IBM Quantum (Cloud)</option>
+                  <option value="Simulator">QasmSimulator (Local, Fast)</option>
+                  <option value="IBM Quantum">IBM Quantum (Real Hardware, ~5-30min queue)</option>
               </Select>
 
               <div className="grid grid-cols-2 gap-4">
-                  <Input label="Epochs" type="number" value={config.epochs} onChange={e => setConfig({...config, epochs: parseInt(e.target.value)})} />
-                  <Input label="Learning Rate" type="number" step="0.01" value={config.lr} onChange={e => setConfig({...config, lr: parseFloat(e.target.value)})} />
+                  <div>
+                      <div className="flex items-center gap-1 mb-2">
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-200">Epochs</label>
+                          <div className="group relative">
+                              <Sparkles className="w-3 h-3 text-slate-400 cursor-help"/>
+                              <div className="hidden group-hover:block absolute z-50 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs p-2 rounded whitespace-nowrap bottom-full mb-1 left-0">
+                                  How many training iterations
+                              </div>
+                          </div>
+                      </div>
+                      <Input type="number" value={config.epochs} onChange={e => setConfig({...config, epochs: parseInt(e.target.value)})} className="!mb-0" />
+                  </div>
+                  <div>
+                      <div className="flex items-center gap-1 mb-2">
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-200">Learning Rate</label>
+                          <div className="group relative">
+                              <Sparkles className="w-3 h-3 text-slate-400 cursor-help"/>
+                              <div className="hidden group-hover:block absolute z-50 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs p-2 rounded whitespace-nowrap bottom-full mb-1 right-0">
+                                  Size of parameter update steps
+                              </div>
+                          </div>
+                      </div>
+                      <Input type="number" step="0.01" value={config.lr} onChange={e => setConfig({...config, lr: parseFloat(e.target.value)})} className="!mb-0" />
+                  </div>
+              </div>
+
+              {/* Hyperparameter Education */}
+              <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-200 space-y-1">
+                  <p><span className="font-bold">Epochs:</span> More = better learning but slower training (50-100 recommended)</p>
+                  <p><span className="font-bold">Learning Rate:</span> Higher = faster but may miss optimal. Lower = accurate but slow (0.01-0.1 typical)</p>
               </div>
               
               <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
                   <div className="flex justify-between items-end mb-2">
-                      <Input className="!mb-0" label="Ansatz Layers" type="number" value={config.layers} onChange={e => setConfig({...config, layers: parseInt(e.target.value)})} />
+                      <div className="flex-1">
+                          <div className="flex items-center gap-1 mb-2">
+                              <label className="text-xs font-bold text-slate-700 dark:text-slate-200">Ansatz Layers</label>
+                              <div className="group relative">
+                                  <Sparkles className="w-3 h-3 text-slate-400 cursor-help"/>
+                                  <div className="hidden group-hover:block absolute z-50 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs p-2 rounded whitespace-nowrap bottom-full mb-1">
+                                      Circuit depth. More layers = more expressive but prone to barren plateaus
+                                  </div>
+                              </div>
+                          </div>
+                          <Input className="!mb-0" type="number" value={config.layers} onChange={e => setConfig({...config, layers: parseInt(e.target.value)})} />
+                      </div>
                       <Button variant="soft" className="ml-2 h-[42px] px-3" onClick={runAutoDesign} isLoading={isAutoDesigning} title="Auto-Design Circuit">
                           <Wand2 className="w-4 h-4 text-violet-600 dark:text-violet-400"/>
                       </Button>
                   </div>
                   {architectReport && (
                       <div className="mt-2 text-xs text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-900/20 p-2 rounded-lg border border-violet-100 dark:border-violet-800 animate-fade-in">
-                          <span className="font-bold">AI Insight:</span> {architectReport}
+                          <span className="font-bold">✨ AI Insight:</span> {architectReport}
                       </div>
                   )}
               </div>

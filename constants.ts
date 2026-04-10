@@ -2,7 +2,8 @@
 import { 
   LayoutDashboard, BookOpen, Database, 
   Cpu, Sliders, Zap, Activity, ShieldCheck, 
-  Box, Archive, GraduationCap, PlayCircle, HelpCircle, FileText
+  Box, Archive, GraduationCap, PlayCircle, HelpCircle, FileText,
+  Radio, Users, Settings
 } from 'lucide-react';
 
 export const COLORS = {
@@ -71,6 +72,14 @@ export const RESEARCHER_SIDEBAR = [
     ]
   }
 ];
+
+// Admin-only navigation items
+export const ADMIN_SIDEBAR_GROUP = {
+  group: "Administration",
+  items: [
+    { id: 'admin', label: 'Broadcast Channel', icon: Radio }
+  ]
+};
 
 export const STUDENT_NAV = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },

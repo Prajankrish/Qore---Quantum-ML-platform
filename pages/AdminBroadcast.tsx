@@ -6,48 +6,96 @@ import { authService } from '../services/auth';
 import { BroadcastMessage, User } from '../types';
 import { 
   Send, Users, AlertTriangle, Info, Bell, Trash2, Radio, 
-  Activity, Server, Database, ShieldCheck, Clock, CheckCircle2, XCircle, Search
+  Activity, Server, Database, ShieldCheck, Clock, CheckCircle2, XCircle, Search, Lock
 } from 'lucide-react';
 
 export const AdminBroadcast: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'broadcast' | 'users' | 'health'>('broadcast');
+  const [adminVerified, setAdminVerified] = useState(false);
+  const [error, setError] = useState('');
+
+  // Verify admin access on component mount
+  useEffect(() => {
+    const currentUser = authService.getCurrentUser();
+    
+    // Check if user is authenticated and has admin role
+    if (!currentUser || !authService.isCurrentUserAdmin()) {
+      setError('Unauthorized: Admin access required');
+      setAdminVerified(false);
+      return;
+    }
+    
+    // Verify that this is the actual admin user (email match)
+    if (currentUser.email !== 'prajankrish7@gmail.com') {
+      setError('Unauthorized: Only the master admin can access this console');
+      setAdminVerified(false);
+      return;
+    }
+    
+    setAdminVerified(true);
+    setError('');
+  }, []);
 
   return (
     <div className="space-y-8 animate-fade-in max-w-6xl mx-auto">
-      <SectionTitle 
-        title="System Administration" 
-        subtitle="Platform Management Console" 
-        rightElement={<Badge color="red" className="animate-pulse shadow-red-200">Admin Mode Active</Badge>}
-      />
+      {/* Security Error Display */}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded-lg flex items-center gap-3">
+          <Lock className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+          <div>
+            <p className="font-bold text-red-800 dark:text-red-200">{error}</p>
+            <p className="text-sm text-red-600 dark:text-red-300 mt-1">This action has been logged.</p>
+          </div>
+        </div>
+      )}
 
-      {/* Admin Navigation Tabs */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800 mb-6 bg-white dark:bg-slate-900 rounded-t-xl px-4 pt-2">
-          <button
-              onClick={() => setActiveTab('broadcast')}
-              className={`px-6 py-4 text-sm font-bold border-b-2 transition-all flex items-center gap-2 relative top-[2px] ${activeTab === 'broadcast' ? 'border-violet-600 text-violet-600 dark:text-violet-400 bg-slate-50 dark:bg-slate-800 rounded-t-lg' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
-          >
-              <Radio className="w-4 h-4" /> Broadcast Center
-          </button>
-          <button
-              onClick={() => setActiveTab('users')}
-              className={`px-6 py-4 text-sm font-bold border-b-2 transition-all flex items-center gap-2 relative top-[2px] ${activeTab === 'users' ? 'border-violet-600 text-violet-600 dark:text-violet-400 bg-slate-50 dark:bg-slate-800 rounded-t-lg' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
-          >
-              <Users className="w-4 h-4" /> User Management
-          </button>
-          <button
-              onClick={() => setActiveTab('health')}
-              className={`px-6 py-4 text-sm font-bold border-b-2 transition-all flex items-center gap-2 relative top-[2px] ${activeTab === 'health' ? 'border-violet-600 text-violet-600 dark:text-violet-400 bg-slate-50 dark:bg-slate-800 rounded-t-lg' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
-          >
-              <Activity className="w-4 h-4" /> System Health
-          </button>
-      </div>
+      {/* Only show admin console if verified */}
+      {!adminVerified ? (
+        <Card title="Access Denied" subtitle="Admin Console">
+          <div className="text-center py-12">
+            <Lock className="w-16 h-16 text-red-500 mx-auto mb-4 opacity-50" />
+            <p className="text-slate-600 dark:text-slate-400 mb-2">Admin access required</p>
+            <p className="text-sm text-slate-500 dark:text-slate-500">You do not have permission to access the administration console.</p>
+          </div>
+        </Card>
+      ) : (
+        <>
+          <SectionTitle 
+            title="System Administration" 
+            subtitle="Platform Management Console" 
+            rightElement={<Badge color="red" className="animate-pulse shadow-red-200">✓ Admin Mode Active</Badge>}
+          />
 
-      {/* TAB CONTENT */}
-      <div className="min-h-[500px]">
-        {activeTab === 'broadcast' && <BroadcastTab />}
-        {activeTab === 'users' && <UserManagementTab />}
-        {activeTab === 'health' && <SystemHealthTab />}
-      </div>
+          {/* Admin Navigation Tabs */}
+          <div className="flex border-b border-slate-200 dark:border-slate-800 mb-6 bg-white dark:bg-slate-900 rounded-t-xl px-4 pt-2">
+              <button
+                  onClick={() => setActiveTab('broadcast')}
+                  className={`px-6 py-4 text-sm font-bold border-b-2 transition-all flex items-center gap-2 relative top-[2px] ${activeTab === 'broadcast' ? 'border-violet-600 text-violet-600 dark:text-violet-400 bg-slate-50 dark:bg-slate-800 rounded-t-lg' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
+              >
+                  <Radio className="w-4 h-4" /> Broadcast Center
+              </button>
+              <button
+                  onClick={() => setActiveTab('users')}
+                  className={`px-6 py-4 text-sm font-bold border-b-2 transition-all flex items-center gap-2 relative top-[2px] ${activeTab === 'users' ? 'border-violet-600 text-violet-600 dark:text-violet-400 bg-slate-50 dark:bg-slate-800 rounded-t-lg' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
+              >
+                  <Users className="w-4 h-4" /> User Management
+              </button>
+              <button
+                  onClick={() => setActiveTab('health')}
+                  className={`px-6 py-4 text-sm font-bold border-b-2 transition-all flex items-center gap-2 relative top-[2px] ${activeTab === 'health' ? 'border-violet-600 text-violet-600 dark:text-violet-400 bg-slate-50 dark:bg-slate-800 rounded-t-lg' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
+              >
+                  <Activity className="w-4 h-4" /> System Health
+              </button>
+          </div>
+
+          {/* TAB CONTENT */}
+          <div className="min-h-[500px]">
+            {activeTab === 'broadcast' && <BroadcastTab />}
+            {activeTab === 'users' && <UserManagementTab />}
+            {activeTab === 'health' && <SystemHealthTab />}
+          </div>
+        </>
+      )}
     </div>
   );
 };

@@ -4,6 +4,7 @@ export interface User {
   email: string;
   name: string;
   role: 'student' | 'researcher' | 'admin';
+  actualRole?: 'student' | 'researcher' | 'admin'; // Original role when admin is viewing as another role
   avatar?: string;
   joinedAt: string;
   streak?: number;

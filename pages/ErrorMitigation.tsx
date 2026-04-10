@@ -40,7 +40,18 @@ export const ErrorMitigation: React.FC = () => {
                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" className="dark:opacity-20" />
                      <XAxis dataKey="scale" type="number" domain={[0, 6]} stroke="#94a3b8" />
                      <YAxis stroke="#94a3b8" />
-                     <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', backgroundColor: '#1e293b', color: '#f8fafc' }} />
+                     <Tooltip 
+                       contentStyle={{ 
+                         borderRadius: '12px', 
+                         border: 'none', 
+                         boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', 
+                         backgroundColor: '#ffffff', 
+                         color: '#1e293b',
+                         padding: '12px 16px'
+                       }} 
+                       labelStyle={{ color: '#1e293b', fontWeight: 'bold', marginBottom: '8px' }}
+                       itemStyle={{ color: '#475569', padding: '2px 0' }}
+                     />
                      <Legend />
                      <Line type="monotone" dataKey="value" stroke={COLORS.primary} strokeWidth={2} dot={false} />
                      <Scatter dataKey="value" fill={COLORS.primary} />

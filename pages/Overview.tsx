@@ -143,6 +143,71 @@ const ResearcherDashboard: React.FC<{ onNavigate: (page: PageView) => void }> = 
   const [qpuLoad, setQpuLoad] = useState(42);
   const [queueSize, setQueueSize] = useState(3);
   
+  // User Data State
+  const [stats, setStats] = useState({
+    datasetsCount: 0,
+    modelsCount: 0,
+    topAccuracy: 0,
+    computeTime: 0
+  });
+  
+  const [loading, setLoading] = useState(true);
+  
+  // Function to fetch and update stats
+  const fetchUserStats = async () => {
+      try {
+          // Import API service
+          const { pythonApi } = await import('../services/pythonApi');
+          
+          // Fetch all user data
+          const [datasets, models, experiments] = await Promise.allSettled([
+              pythonApi.datasets.list().catch(() => []),
+              pythonApi.models.list().catch(() => []),
+              pythonApi.experiments.list().catch(() => [])
+          ]);
+          
+          // Calculate stats
+          const datasetsList = datasets.status === 'fulfilled' ? datasets.value : [];
+          const modelsList = models.status === 'fulfilled' ? models.value : [];
+          const experimentsList = experiments.status === 'fulfilled' ? experiments.value : [];
+          
+          // Calculate AVERAGE accuracy from all trained models (not top)
+          const avgAccuracy = experimentsList.length > 0 
+              ? (experimentsList.reduce((sum: number, e: any) => sum + (e.accuracy || 0), 0) / experimentsList.length) * 100
+              : 0;
+          
+          // Calculate total compute time (in seconds, display as minutes)
+          const computeTimeSeconds = experimentsList.length > 0
+              ? experimentsList.reduce((sum: number, e: any) => sum + (e.compute_time || 0), 0)
+              : 0;
+          const computeTimeMinutes = Math.round(computeTimeSeconds / 60);
+          
+          setStats({
+              datasetsCount: datasetsList.length,
+              modelsCount: modelsList.length,
+              topAccuracy: avgAccuracy,
+              computeTime: computeTimeMinutes
+          });
+      } catch (err) {
+          console.warn('Could not fetch user stats:', err);
+          // Stats remain unchanged on error
+      } finally {
+          setLoading(false);
+      }
+  };
+  
+  useEffect(() => {
+      // Fetch stats on mount
+      fetchUserStats();
+      
+      // Auto-refresh every 5 seconds to show live data
+      const refreshInterval = setInterval(() => {
+          fetchUserStats();
+      }, 5000);
+      
+      return () => clearInterval(refreshInterval);
+  }, []);
+  
   useEffect(() => {
       // Simulate live monitoring
       const interval = setInterval(() => {
@@ -213,45 +278,146 @@ const ResearcherDashboard: React.FC<{ onNavigate: (page: PageView) => void }> = 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card className="p-4 flex items-center gap-4 border-l-4 border-l-blue-500 shadow-sm">
               <div className="p-3 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"><Database size={20}/></div>
-              <div><p className="text-2xl font-bold text-slate-800 dark:text-slate-100">3</p><p className="text-xs font-bold text-slate-400 uppercase">Datasets</p></div>
+              <div><p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{loading ? '-' : stats.datasetsCount}</p><p className="text-xs font-bold text-slate-400 uppercase">Datasets</p></div>
           </Card>
           <Card className="p-4 flex items-center gap-4 border-l-4 border-l-violet-500 shadow-sm">
               <div className="p-3 rounded-full bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400"><Cpu size={20}/></div>
-              <div><p className="text-2xl font-bold text-slate-800 dark:text-slate-100">12</p><p className="text-xs font-bold text-slate-400 uppercase">Models Trained</p></div>
+              <div><p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{loading ? '-' : stats.modelsCount}</p><p className="text-xs font-bold text-slate-400 uppercase">Models Trained</p></div>
           </Card>
           <Card className="p-4 flex items-center gap-4 border-l-4 border-l-emerald-500 shadow-sm">
               <div className="p-3 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400"><Trophy size={20}/></div>
-              <div><p className="text-2xl font-bold text-slate-800 dark:text-slate-100">96.2%</p><p className="text-xs font-bold text-slate-400 uppercase">Top Accuracy</p></div>
+              <div><p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{loading ? '-' : stats.topAccuracy.toFixed(1)}%</p><p className="text-xs font-bold text-slate-400 uppercase">Avg Accuracy</p></div>
           </Card>
           <Card className="p-4 flex items-center gap-4 border-l-4 border-l-amber-500 shadow-sm">
               <div className="p-3 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"><Clock size={20}/></div>
-              <div><p className="text-2xl font-bold text-slate-800 dark:text-slate-100">24m</p><p className="text-xs font-bold text-slate-400 uppercase">Compute Time</p></div>
+              <div><p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{loading ? '-' : stats.computeTime}m</p><p className="text-xs font-bold text-slate-400 uppercase">Compute Time</p></div>
           </Card>
       </div>
 
-      {/* Workflow Steps */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl p-10 border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
-        <SectionTitle title="Research Workflow" subtitle="End-to-end Quantum Machine Learning pipeline" />
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
-            {[
-              { title: '1. Discovery', desc: 'Fetch and analyze papers.', icon: <BookOpen className="w-5 h-5"/>, color: 'violet' },
-              { title: '2. Optimization', desc: 'Architecture Search.', icon: <Layers className="w-5 h-5"/>, color: 'indigo' },
-              { title: '3. Execution', desc: 'Train VQC on simulator.', icon: <Zap className="w-5 h-5"/>, color: 'blue' },
-              { title: '4. Registry', desc: 'Version & Deploy.', icon: <Database className="w-5 h-5"/>, color: 'emerald' }
-            ].map((step, idx) => (
-                <div key={idx} className="relative group cursor-pointer" onClick={() => {
-                    const targets = [PageView.RESEARCH, PageView.SWEEP, PageView.TRAINING, PageView.MODEL_HUB];
-                    onNavigate(targets[idx]);
-                }}>
-                    <div className="flex items-center mb-4">
-                        <span className={`flex items-center justify-center w-12 h-12 rounded-2xl bg-${step.color}-50 dark:bg-${step.color}-900/20 text-${step.color}-600 dark:text-${step.color}-400 font-bold mr-4 shadow-sm border border-${step.color}-100 dark:border-${step.color}-900 group-hover:scale-110 transition-transform`}>
-                            {step.icon}
-                        </span>
-                        <h4 className="font-bold text-slate-800 dark:text-slate-100 text-lg group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">{step.title}</h4>
+      {/* Workflow Steps - Professional Pipeline */}
+      <div className="bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-850 rounded-3xl p-10 border border-slate-100 dark:border-slate-800 shadow-lg transition-colors relative overflow-hidden">
+        {/* Decorative background gradient */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-violet-200/10 to-indigo-200/10 dark:from-violet-900/10 dark:to-indigo-900/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+        
+        <div className="relative z-10">
+          <SectionTitle title="Research Workflow" subtitle="End-to-end Quantum Machine Learning pipeline - Click any step to explore" />
+          
+          {/* Main Workflow Timeline */}
+          <div className="mt-12">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 md:gap-4 relative">
+              {/* Connection Lines - Hidden on mobile */}
+              <div className="hidden md:block absolute top-20 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 via-indigo-500 via-blue-500 to-emerald-500 opacity-30"></div>
+              
+              {/* Workflow Steps */}
+              {[
+                { 
+                  title: 'Discovery', 
+                  step: '1',
+                  mainDesc: 'Fetch and analyze research papers from quantum literature.', 
+                  icon: <BookOpen className="w-8 h-8"/>, 
+                  color: 'violet',
+                  details: 'Search, filter, and explore quantum ML papers',
+                  action: 'Explore Papers'
+                },
+                { 
+                  title: 'Optimization', 
+                  step: '2',
+                  mainDesc: 'Automated circuit architecture search and tuning.', 
+                  icon: <Layers className="w-8 h-8"/>, 
+                  color: 'indigo',
+                  details: 'Find optimal circuit configurations automatically',
+                  action: 'Start Sweep'
+                },
+                { 
+                  title: 'Execution', 
+                  step: '3',
+                  mainDesc: 'Train VQC models with real-time monitoring.', 
+                  icon: <Zap className="w-8 h-8"/>, 
+                  color: 'blue',
+                  details: 'Run experiments with live performance tracking',
+                  action: 'Launch Training'
+                },
+                { 
+                  title: 'Registry', 
+                  step: '4',
+                  mainDesc: 'Version control and deploy trained models.', 
+                  icon: <Database className="w-8 h-8"/>, 
+                  color: 'emerald',
+                  details: 'Store, version, and deploy your best models',
+                  action: 'View Models'
+                }
+              ].map((step, idx) => (
+                <div 
+                  key={idx} 
+                  className="relative group"
+                  onClick={() => {
+                      const targets = [PageView.RESEARCH, PageView.SWEEP, PageView.TRAINING, PageView.MODEL_HUB];
+                      onNavigate(targets[idx]);
+                  }}
+                >
+                  {/* Step Card */}
+                  <div className={`relative p-6 rounded-2xl bg-white dark:bg-slate-800 border-2 border-${step.color}-100 dark:border-${step.color}-900/30 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer group hover:border-${step.color}-400 dark:hover:border-${step.color}-600 overflow-hidden h-full flex flex-col`}>
+                    {/* Gradient overlay on hover */}
+                    <div className={`absolute inset-0 bg-gradient-to-br from-${step.color}-50/0 to-${step.color}-100/0 dark:from-${step.color}-900/0 dark:to-${step.color}-800/0 group-hover:from-${step.color}-50/50 group-hover:to-${step.color}-100/50 dark:group-hover:from-${step.color}-900/30 dark:group-hover:to-${step.color}-800/30 transition-all duration-300`}></div>
+                    
+                    {/* Step Number Badge */}
+                    <div className={`absolute -top-3 -left-3 w-10 h-10 rounded-full bg-${step.color}-500 text-white font-bold text-lg flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform ring-4 ring-white dark:ring-slate-800`}>
+                      {step.step}
                     </div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{step.desc}</p>
+                    
+                    {/* Header Section - Icon + Title */}
+                    <div className="relative z-10 mb-5 pb-5 border-b border-slate-100 dark:border-slate-700">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className={`flex items-center justify-center w-14 h-14 rounded-xl bg-${step.color}-50 dark:bg-${step.color}-900/30 text-${step.color}-600 dark:text-${step.color}-400 shadow-sm group-hover:scale-110 group-hover:bg-${step.color}-100 dark:group-hover:bg-${step.color}-800/50 transition-all`}>
+                          {step.icon}
+                        </div>
+                        <h4 className={`font-bold text-lg text-${step.color}-900 dark:text-${step.color}-100 group-hover:text-${step.color}-600 dark:group-hover:text-${step.color}-300 transition-colors`}>
+                          {step.title}
+                        </h4>
+                      </div>
+                    </div>
+                    
+                    {/* Main Description Section */}
+                    <div className="relative z-10 mb-5 flex-1">
+                      <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
+                        {step.mainDesc}
+                      </p>
+                    </div>
+                    
+                    {/* Details Section */}
+                    <div className="relative z-10 mb-4 pb-4 border-t border-slate-100 dark:border-slate-700">
+                      <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-${step.color}-50 dark:bg-${step.color}-900/20 text-${step.color}-700 dark:text-${step.color}-300 text-xs font-semibold mt-3`}>
+                        <div className={`w-1.5 h-1.5 rounded-full bg-${step.color}-500`}></div>
+                        {step.details}
+                      </div>
+                    </div>
+                    
+                    {/* Action Button Section */}
+                    <div className="relative z-10 pt-2 border-t border-slate-100 dark:border-slate-700">
+                      <span className={`text-xs font-bold text-${step.color}-600 dark:text-${step.color}-400 flex items-center group-hover:gap-2 gap-1 transition-all uppercase tracking-wide`}>
+                        {step.action}
+                        <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </span>
+                    </div>
+                  </div>
                 </div>
-            ))}
+              ))}
+            </div>
+          </div>
+          
+          {/* Bottom CTA Section */}
+          <div className="mt-12 p-6 rounded-2xl bg-gradient-to-r from-violet-500/10 to-indigo-500/10 dark:from-violet-900/20 dark:to-indigo-900/20 border border-violet-200 dark:border-violet-800 flex items-center justify-between gap-4">
+            <div>
+              <h3 className="font-bold text-slate-900 dark:text-white mb-1">Ready to start your research?</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Begin with discovery to explore cutting-edge quantum papers and find inspiration for your next experiment.</p>
+            </div>
+            <Button 
+              onClick={() => onNavigate(PageView.RESEARCH)}
+              className="!bg-violet-600 hover:!bg-violet-700 !text-white whitespace-nowrap shadow-lg"
+            >
+              Start Discovery <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>

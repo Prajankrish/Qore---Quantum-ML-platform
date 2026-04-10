@@ -17,6 +17,7 @@ import { Learn } from './pages/Learn';
 import { Datasets } from './pages/Datasets';
 import { Sweep } from './pages/Sweep';
 import { MockOAuth } from './pages/MockOAuth';
+import { OAuthCallback } from './pages/OAuthCallback';
 import { Billing } from './pages/Billing';
 import { AdminBroadcast } from './pages/AdminBroadcast';
 import { UserGuide } from './pages/UserGuide';
@@ -32,6 +33,7 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [mockOAuthProvider, setMockOAuthProvider] = useState<'Google' | 'GitHub' | null>(null);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
   // Command Palette State
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
@@ -58,6 +60,14 @@ const App: React.FC = () => {
           localStorage.setItem('theme', 'light');
       }
   }, [isDarkMode]);
+
+  // Handle auth check on app load
+  useEffect(() => {
+    // Check existing session
+    const user = authService.getCurrentUser();
+    setIsAuthenticated(!!user);
+    setIsLoadingAuth(false);
+  }, []);
 
   // Command Palette Keyboard Listener
   useEffect(() => {
@@ -118,6 +128,7 @@ const App: React.FC = () => {
   const renderPage = () => {
     // Basic route guard
     const user = authService.getCurrentUser();
+    const isActuallyAdmin = user?.role === 'admin' || user?.actualRole === 'admin';
     
     switch (currentPage) {
       case PageView.OVERVIEW: return <Overview onNavigate={setCurrentPage} />;
@@ -135,8 +146,8 @@ const App: React.FC = () => {
       case PageView.BILLING: return <Billing />;
       case PageView.USER_GUIDE: return <UserGuide />;
       case PageView.ADMIN: 
-          // Guard: Only allow admins
-          return user?.role === 'admin' ? <AdminBroadcast /> : <Overview onNavigate={setCurrentPage} />;
+          // Guard: Only allow admins (check actualRole for admins viewing as other roles)
+          return isActuallyAdmin ? <AdminBroadcast /> : <Overview onNavigate={setCurrentPage} />;
       case PageView.PROFILE: return <Profile onLogout={handleLogout} onNavigate={setCurrentPage} />;
       case PageView.AUTH: return <Auth onLoginSuccess={handleLoginSuccess} onSocialLogin={setMockOAuthProvider} />;
       default: return <Overview onNavigate={setCurrentPage} />;
@@ -145,6 +156,23 @@ const App: React.FC = () => {
 
   if (showLanding && !isAuthenticated) {
     return <Landing onEnter={() => setShowLanding(false)} />;
+  }
+
+  // Show loading while checking OAuth callback
+  if (isLoadingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-400">Authenticating...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle OAuth callback from backend
+  if (window.location.pathname === '/auth/callback') {
+    return <OAuthCallback onLoginSuccess={handleLoginSuccess} />;
   }
 
   // Intercept for Mock OAuth flow

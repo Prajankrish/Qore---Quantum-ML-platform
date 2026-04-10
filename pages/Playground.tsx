@@ -240,6 +240,54 @@ export const Playground: React.FC = () => {
         }
       />
 
+      {/* Educational Introduction */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* What is the Playground */}
+          <Card className="lg:col-span-2 border-l-4 border-l-violet-500">
+              <div className="flex items-center gap-3 mb-4">
+                  <Sparkles className="w-6 h-6 text-violet-600"/>
+                  <div>
+                      <h3 className="font-bold text-slate-900 dark:text-white">What is This Playground?</h3>
+                      <p className="text-xs text-slate-600 dark:text-slate-400">Understand quantum advantage</p>
+                  </div>
+              </div>
+              <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed mb-4">
+                  The quantum playground lets you run predictions on real datasets using quantum algorithms and compare them with classical machine learning. Watch how quantum circuits process feature data and make predictions. By seeing quantum and classical models side-by-side, you'll develop intuition for when quantum computers truly provide an advantage.
+              </p>
+              <div className="p-3 bg-violet-50 dark:bg-violet-900/20 rounded-lg border border-violet-200 dark:border-violet-800">
+                  <p className="text-xs text-violet-800 dark:text-violet-200 font-medium">
+                      <span className="font-bold">💡 Key Insight:</span> Quantum computers don't always beat classical ones. They excel at specific problems where quantum properties (superposition, entanglement) provide exponential speedup.
+                  </p>
+              </div>
+          </Card>
+
+          {/* How to Use It */}
+          <Card className="border-l-4 border-l-indigo-500">
+              <div className="flex items-center gap-3 mb-4">
+                  <Lightbulb className="w-6 h-6 text-indigo-600"/>
+                  <h3 className="font-bold text-slate-900 dark:text-white">How It Works</h3>
+              </div>
+              <ol className="space-y-3 text-sm">
+                  <li className="flex gap-2">
+                      <span className="inline-flex items-center justify-center w-5 h-5 bg-indigo-600 text-white text-xs font-bold rounded-full flex-shrink-0">1</span>
+                      <span className="text-slate-700 dark:text-slate-300"><span className="font-bold">Pick a dataset</span> (Iris, digits, wine)</span>
+                  </li>
+                  <li className="flex gap-2">
+                      <span className="inline-flex items-center justify-center w-5 h-5 bg-indigo-600 text-white text-xs font-bold rounded-full flex-shrink-0">2</span>
+                      <span className="text-slate-700 dark:text-slate-300"><span className="font-bold">Adjust features</span> to input into models</span>
+                  </li>
+                  <li className="flex gap-2">
+                      <span className="inline-flex items-center justify-center w-5 h-5 bg-indigo-600 text-white text-xs font-bold rounded-full flex-shrink-0">3</span>
+                      <span className="text-slate-700 dark:text-slate-300"><span className="font-bold">Run predictions</span> on both systems</span>
+                  </li>
+                  <li className="flex gap-2">
+                      <span className="inline-flex items-center justify-center w-5 h-5 bg-indigo-600 text-white text-xs font-bold rounded-full flex-shrink-0">4</span>
+                      <span className="text-slate-700 dark:text-slate-300"><span className="font-bold">Compare results</span> and analyze</span>
+                  </li>
+              </ol>
+          </Card>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column */}
         <div className="lg:col-span-4 space-y-6">
@@ -282,12 +330,20 @@ export const Playground: React.FC = () => {
           </Card>
 
           <Card title="Feature Vectors" subtitle="Adjust input parameters">
+              <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <p className="text-xs text-blue-800 dark:text-blue-200 leading-relaxed">
+                      <span className="font-bold">What are features?</span> These are the numerical input values that both quantum and classical models use to make predictions. Adjust the sliders to create different input patterns and see how the models respond. Lower values encode to small rotation angles, higher values to larger angles in the quantum circuit.
+                  </p>
+              </div>
              <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                 {featureConfig.map((feat, idx) => (
                   <div key={idx} className="group">
-                    <div className="flex justify-between text-sm mb-2">
-                      <span className="font-semibold text-slate-700 dark:text-slate-200 truncate w-32">{feat.name}</span>
-                      <span className="font-mono text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30 px-2 py-0.5 rounded text-xs">{features[idx]?.toFixed(2)}</span>
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                          <span className="font-semibold text-slate-700 dark:text-slate-200 block truncate w-32">{feat.name}</span>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Range: {feat.min} → {feat.max}</p>
+                      </div>
+                      <span className="font-mono text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30 px-3 py-1 rounded text-sm font-bold">{features[idx]?.toFixed(2)}</span>
                     </div>
                     <input
                         type="range"
@@ -296,7 +352,7 @@ export const Playground: React.FC = () => {
                         step={feat.step}
                         value={features[idx] || feat.min}
                         onChange={(e) => handleFeatureChange(idx, parseFloat(e.target.value))}
-                        className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-violet-600"
+                        className="w-full h-2 bg-gradient-to-r from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 rounded-lg appearance-none cursor-pointer accent-violet-600"
                     />
                   </div>
                 ))}

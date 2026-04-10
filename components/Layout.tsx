@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { STUDENT_NAV, RESEARCHER_SIDEBAR } from '../constants';
+import { STUDENT_NAV, RESEARCHER_SIDEBAR, ADMIN_SIDEBAR_GROUP } from '../constants';
 import { PageView, User, SystemNotification } from '../types';
 import { authService } from '../services/auth';
 import { api } from '../services/api';
@@ -59,19 +59,29 @@ export const Layout: React.FC<LayoutProps> = ({ currentPage, onNavigate, childre
 
   // Only Admins can cycle roles to test UI
   const adminViewSwitch = () => {
-    if (user?.role !== 'admin') return;
-    // For local demo/testing, admins can impersonate roles
-    const roles: ('student' | 'researcher' | 'admin')[] = ['student', 'researcher', 'admin'];
-    const currentIdx = roles.indexOf(user.role);
-    const nextRole = roles[(currentIdx + 1) % roles.length];
+    // Check actual role (for admins who are viewing as other roles)
+    const isActuallyAdmin = user?.actualRole === 'admin' || user?.role === 'admin';
+    if (!isActuallyAdmin) return;
     
-    const updatedUser = authService.updateProfile({ role: nextRole });
+    // For local demo/testing, admins can impersonate roles
+    const viewRoles: ('student' | 'researcher' | 'admin')[] = ['student', 'researcher', 'admin'];
+    const currentViewRole = user?.role || 'admin';
+    const currentIdx = viewRoles.indexOf(currentViewRole);
+    const nextRole = viewRoles[(currentIdx + 1) % viewRoles.length];
+    
+    // Preserve actualRole as 'admin' so we know they're really an admin
+    const updatedUser = authService.updateProfile({ 
+      role: nextRole,
+      actualRole: 'admin' // Always keep track that they're actually an admin
+    });
     setUser(updatedUser);
     setIsDropdownOpen(false);
     onNavigate(PageView.OVERVIEW);
   };
 
-  const isResearcher = user?.role === 'researcher' || user?.role === 'admin';
+  // Check if user is actually an admin (even when viewing as student)
+  const isActuallyAdmin = user?.actualRole === 'admin' || user?.role === 'admin';
+  const isResearcher = user?.role === 'researcher' || user?.role === 'admin' || user?.actualRole === 'admin';
 
   const NotificationCenter = () => (
       <div className="relative">
@@ -149,6 +159,14 @@ export const Layout: React.FC<LayoutProps> = ({ currentPage, onNavigate, childre
       }))
   }));
 
+  // Add admin section for admin users (even when viewing as other roles)
+  if (isActuallyAdmin) {
+    sidebarItems.push({
+      ...ADMIN_SIDEBAR_GROUP,
+      items: ADMIN_SIDEBAR_GROUP.items.map(item => ({ ...item, locked: false }))
+    });
+  }
+
   if (user?.role === 'student' && currentPage !== PageView.BILLING && currentPage !== PageView.PROFILE) {
     return (
         <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-violet-100 selection:text-violet-900 transition-colors duration-300">
@@ -171,6 +189,16 @@ export const Layout: React.FC<LayoutProps> = ({ currentPage, onNavigate, childre
                                         {item.label}
                                     </button>
                                 ))}
+                                {/* Admin Broadcast link - only show for actual admins */}
+                                {isActuallyAdmin && (
+                                  <button
+                                      onClick={() => onNavigate(PageView.ADMIN)}
+                                      className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 ${currentPage === PageView.ADMIN ? 'bg-amber-500 text-white shadow-md shadow-amber-200' : 'text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 border border-amber-200 dark:border-amber-800'}`}
+                                  >
+                                      <ShieldAlert className={`w-4 h-4 mr-2`} />
+                                      Admin
+                                  </button>
+                                )}
                             </div>
                         </div>
                         <div className="flex items-center gap-2 md:gap-4">
@@ -287,25 +315,42 @@ const Logo: React.FC<{ markOnly: boolean, onClick: () => void }> = ({ markOnly, 
 
 const UserProfile: React.FC<any> = ({ user, isDropdownOpen, setIsDropdownOpen, onNavigate, switchRole, handleLogout }) => {
     if (!user) return null;
+    const isActuallyAdmin = user?.actualRole === 'admin' || user?.role === 'admin';
+    const isViewingAsOtherRole = user?.actualRole === 'admin' && user?.role !== 'admin';
+    
     return (
         <div className="relative">
             <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="flex items-center gap-3 pl-3 pr-2 py-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 <div className="text-right hidden sm:block">
                     <p className="text-sm font-bold text-slate-800 dark:text-slate-200 leading-none">{user.name}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-none mt-1 capitalize">{user.role}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-none mt-1 capitalize">
+                      {isViewingAsOtherRole ? (
+                        <span className="text-amber-600 dark:text-amber-400">Viewing as {user.role}</span>
+                      ) : user.role}
+                    </p>
                 </div>
-                <div className="w-9 h-9 rounded-full bg-violet-100 dark:bg-violet-900/50 border-2 border-white dark:border-slate-800 shadow-sm flex items-center justify-center text-sm font-bold text-violet-600 dark:text-violet-300 uppercase">
+                <div className={`w-9 h-9 rounded-full border-2 shadow-sm flex items-center justify-center text-sm font-bold uppercase ${
+                  isViewingAsOtherRole 
+                    ? 'bg-amber-100 dark:bg-amber-900/50 border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-300' 
+                    : 'bg-violet-100 dark:bg-violet-900/50 border-white dark:border-slate-800 text-violet-600 dark:text-violet-300'
+                }`}>
                     {user.name.charAt(0)}
                 </div>
                 <ChevronDown className="w-4 h-4 text-slate-400" />
             </button>
             {isDropdownOpen && (
                 <div className="absolute top-full right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden z-50">
+                    {isViewingAsOtherRole && (
+                      <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-100 dark:border-amber-800">
+                        <p className="text-xs font-bold text-amber-700 dark:text-amber-400">Admin Preview Mode</p>
+                        <p className="text-xs text-amber-600 dark:text-amber-500">Viewing as {user.role}</p>
+                      </div>
+                    )}
                     <div className="p-2">
                         <button onClick={() => { onNavigate(PageView.PROFILE); setIsDropdownOpen(false); }} className="w-full flex items-center px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-violet-50 dark:hover:bg-slate-700 rounded-lg"><UserIcon className="w-4 h-4 mr-2" /> Profile</button>
                         <button onClick={() => { onNavigate(PageView.BILLING); setIsDropdownOpen(false); }} className="w-full flex items-center px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-violet-50 dark:hover:bg-slate-700 rounded-lg"><CreditCard className="w-4 h-4 mr-2" /> Billing</button>
-                        {user.role === 'admin' && (
-                            <button onClick={switchRole} className="w-full flex items-center px-4 py-2 text-sm text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg"><Repeat className="w-4 h-4 mr-2" /> View As Persona</button>
+                        {isActuallyAdmin && (
+                            <button onClick={switchRole} className="w-full flex items-center px-4 py-2 text-sm text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg"><Repeat className="w-4 h-4 mr-2" /> {isViewingAsOtherRole ? 'Switch View' : 'View As Persona'}</button>
                         )}
                         <button onClick={handleLogout} className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"><LogOut className="w-4 h-4 mr-2" /> Sign Out</button>
                     </div>
