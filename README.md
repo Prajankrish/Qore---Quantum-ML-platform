@@ -1,7 +1,3 @@
-<div align="center">
-<img width="1200" height="475" alt="Qore Banner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
-
 # Qore - Quantum Machine Learning Platform
 
 A comprehensive platform for quantum computing and machine learning research, experimentation, and deployment. Built with a Python backend and React frontend, Qore enables researchers and practitioners to execute quantum algorithms, train classical ML models, and manage computational resources efficiently.
